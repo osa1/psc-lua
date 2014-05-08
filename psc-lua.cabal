@@ -30,7 +30,6 @@ library
 executable psc-lua
   main-is:             Main.hs
   hs-source-dirs:      psc-lua
-  other-extensions:    TupleSections, RecordWildCards, GeneralizedNewtypeDeriving
   build-depends:       base >=4.7 && <4.8,
                        cmdtheline >=0.2 && <0.3,
                        directory >=1.2 && <1.3,

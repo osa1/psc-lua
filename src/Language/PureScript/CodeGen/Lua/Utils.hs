@@ -1,4 +1,3 @@
-
 module Language.PureScript.CodeGen.Lua.Utils where
 
 import qualified Language.Lua.Syntax as L
@@ -23,3 +22,4 @@ pprint ls =
 expToPexp :: L.Exp -> L.PrefixExp
 expToPexp (L.PrefixExp pexp) = pexp
 expToPexp e = L.Paren e
+

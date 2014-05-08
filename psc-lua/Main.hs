@@ -1,5 +1,3 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-
 module Main where
 
 import Control.Applicative
@@ -51,9 +49,6 @@ compile opts input = do
           forM_ luaModules $ \(moduleName, luaCode) ->
             U.writeFile (moduleName <.> "lua") luaCode
           exitSuccess
-
-mkdirp :: FilePath -> IO ()
-mkdirp = createDirectoryIfMissing True . takeDirectory
 
 useStdIn :: Term Bool
 useStdIn = value . flag $ (optInfo [ "s", "stdin" ])
