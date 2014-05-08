@@ -1,4 +1,4 @@
-module Main where
+module Main (main) where
 
 import Control.Applicative
 import Control.Monad
@@ -6,8 +6,7 @@ import Control.Monad
 import Data.Version (showVersion)
 
 import System.Console.CmdTheLine
-import System.Directory (createDirectoryIfMissing)
-import System.FilePath (takeDirectory, (<.>))
+import System.FilePath ((<.>))
 import System.Exit (exitSuccess, exitFailure)
 
 import Text.Parsec (ParseError)
