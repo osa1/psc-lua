@@ -1,0 +1,44 @@
+name:                psc-lua
+version:             0.1.0.0
+synopsis:            Lua backend for PureScript
+description:         Lua backend for PureScript: Strongly, statically typed programming language with expressive types, inspired by Haskell.
+license:             MIT
+license-file:        LICENSE
+author:              Ömer Sinan Ağacan
+maintainer:          omeragacan@gmail.com
+category:            Language
+build-type:          Simple
+cabal-version:       >=1.10
+data-files:          prelude/prelude.purs
+
+library
+  build-depends:       base >=4.7 && <4.8,
+                       language-lua >=0.4.3 && <0.5,
+                       filepath >=1.3 && <1.4,
+                       mtl >=2.1 && <2.2,
+                       containers >=0.5 && <0.6,
+                       purescript >=0.5 && <0.6
+  hs-source-dirs:      src
+  exposed-modules:     Language.PureScript.Lua.Compiler
+                       Language.PureScript.Lua.Options
+  other-modules:       Language.PureScript.CodeGen.Lua
+                       Language.PureScript.CodeGen.Lua.Monad
+                       Language.PureScript.CodeGen.Lua.Utils
+  default-language:    Haskell2010
+  ghc-options:         -Wall -O2
+
+executable psc-lua
+  main-is:             Main.hs
+  hs-source-dirs:      psc-lua
+  other-extensions:    TupleSections, RecordWildCards, GeneralizedNewtypeDeriving
+  build-depends:       base >=4.7 && <4.8,
+                       cmdtheline >=0.2 && <0.3,
+                       directory >=1.2 && <1.3,
+                       filepath >=1.3 && <1.4,
+                       parsec >=3.1 && <3.2,
+                       utf8-string >=0.3 && <0.4,
+                       purescript >=0.5 && <0.6,
+                       psc-lua
+  default-language:    Haskell2010
+  ghc-options:         -Wall -O2
+
