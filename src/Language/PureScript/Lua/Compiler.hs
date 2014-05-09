@@ -5,6 +5,8 @@ import Language.PureScript.Declarations as P
 import Language.PureScript.Names as P
 import qualified Language.PureScript.CodeGen.Lua as L
 import qualified Language.PureScript.CodeGen.Lua.Utils as L (pprint)
+import Language.PureScript.CodeGen.Lua.Optimizer
+import Language.PureScript.CodeGen.Lua.Lint
 import Language.PureScript.TypeChecker as P
 import Language.PureScript.Sugar as P
 import Language.PureScript.ModuleDependencies as P
@@ -37,7 +39,8 @@ compileToLua' env opts ms = do
       compileModule :: Module -> (String, String)
       compileModule m =
         let (mname, lua) = L.moduleToLua opts m env'
-            codeText = L.pprint [if Just mname == mainModule then L.generateMain env' opts lua else lua]
+            codeText = L.pprint $ map (optimize . lint)
+              [if Just mname == mainModule then L.generateMain env' opts lua else lua]
         in (mname, codeText)
 
     return $ map compileModule regrouped
