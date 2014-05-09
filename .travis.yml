@@ -1,14 +1,28 @@
 language: "haskell"
 ghc: 7.8
 install:
+  # install alex for language-lua
   - cabal install alex
+
+  # install purescript
   - git clone https://github.com/purescript/purescript
   - cabal install purescript/purescript.cabal
+
+  # install psc-lua-tests
   - git clone https://github.com/osa1/psc-lua-tests
   - cabal install psc-lua-tests/psc-lua-tests.cabal
+
+  # install psc-lua
   - cabal install
+
+  # compile Lua 5.1.5
+  - curl -R -O http://www.lua.org/ftp/lua-5.1.5.tar.gz
+  - tar zxf lua-5.1.5.tar.gz
+  - cd lua-5.1.5 && make linux -j && sudo make install && cd ..
+
 script:
   - cd psc-lua-tests && psc-lua-tests
+
 notifications:
   # irc:
   #   channels: "irc.freenode.net#purescript"
