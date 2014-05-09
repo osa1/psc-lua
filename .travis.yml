@@ -1,0 +1,18 @@
+language: "haskell"
+ghc: 7.8
+install:
+  - git clone https://github.com/purescript/purescript
+  - cabal install purescript/purescript.cabal
+  - git clone https://github.com/osa1/psc-lua-tests
+  - cabal install psc-lua-tests/psc-lua-tests.cabal
+  - cabal install
+script:
+  - cd psc-lua-tests && psc-lua-tests
+notifications:
+  # irc:
+  #   channels: "irc.freenode.net#purescript"
+  #   skip_join: true
+  email:
+    recipients: omeragacan@gmail.com
+    on_success: change
+    on_failure: change
