@@ -20,7 +20,7 @@ removeDollars = everywhere (mkT removeDollarExp)
   where
     removeDollarExp
       (L.PrefixExp (L.PEFunCall (L.NormalFunCall
-        (L.PEFunCall (L.NormalFunCall (L.PEVar (L.Select (L.PEVar (L.VarName "Prelude")) (L.String "_dollar")))
+        (L.PEFunCall (L.NormalFunCall (L.PEVar (L.Select (L.PEVar (L.VarName "Prelude")) (L.String "$")))
                                       (L.Args [arg1])))
         (L.Args [arg2])))) =
       L.PrefixExp $ L.PEFunCall $ L.NormalFunCall (expToPexp arg1) $ L.Args [arg2]
@@ -59,31 +59,31 @@ inlineCommonOperators = everywhere (mkT inlineCommonOperators')
 
 inlineCommonOperators' :: L.Exp -> L.Exp
 inlineCommonOperators' = applyAll
-    [ binary "numNumber" "_plus" L.Add
-    , binary "numNumber" "_minus" L.Sub
-    , binary "numNumber" "_times" L.Mul
-    , binary "numNumber" "_div" L.Div
-    , binary "numNumber" "_percent" L.Mod
+    [ binary "numNumber" "+" L.Add
+    , binary "numNumber" "-" L.Sub
+    , binary "numNumber" "*" L.Mul
+    , binary "numNumber" "/" L.Div
+    , binary "numNumber" "%" L.Mod
 
-    , binary "ordNumber" "_less" L.LT
-    , binary "ordNumber" "_greater" L.GT
-    , binary "ordNumber" "_greater_eq" L.GTE
-    , binary "ordNumber" "_less_eq" L.LTE
+    , binary "ordNumber" "<" L.LT
+    , binary "ordNumber" ">" L.GT
+    , binary "ordNumber" ">=" L.GTE
+    , binary "ordNumber" "<=" L.LTE
 
-    , binary "eqNumber" "_eq_eq" L.EQ
-    , binary "eqNumber" "_div_eq" L.NEQ
-    , binary "eqString" "_eq_eq" L.EQ
-    , binary "eqString" "_div_eq" L.NEQ
-    , binary "eqBoolean" "_eq_eq" L.EQ
-    , binary "eqBoolean" "_div_eq" L.NEQ
+    , binary "eqNumber" "==" L.EQ
+    , binary "eqNumber" "/=" L.NEQ
+    , binary "eqString" "==" L.EQ
+    , binary "eqString" "/=" L.NEQ
+    , binary "eqBoolean" "==" L.EQ
+    , binary "eqBoolean" "/=" L.NEQ
 
-    , binary "semigroupString" "_plus_plus" L.Concat
+    , binary "semigroupString" "++" L.Concat
 
-    , binary "boolLikeBoolean" "_amp_amp" L.And
-    , binary "boolLikeBoolean" "_bar_bar" L.Or
+    , binary "boolLikeBoolean" "&&" L.And
+    , binary "boolLikeBoolean" "||" L.Or
 
-    , unary "numNumber" "_minus" L.Neg
-    , unary "boolLikeBoolean" "__not" L.Not
+    , unary "numNumber" "-" L.Neg
+    , unary "boolLikeBoolean" "not" L.Not
     ]
   where
     binary :: String -> String -> L.Binop -> L.Exp -> L.Exp
