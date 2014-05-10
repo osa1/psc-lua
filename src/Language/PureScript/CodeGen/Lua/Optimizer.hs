@@ -67,13 +67,23 @@ inlineCommonOperators' = applyAll
 
     , binary "ordNumber" "_less" L.LT
     , binary "ordNumber" "_greater" L.GT
+    , binary "ordNumber" "_greater_eq" L.GTE
+    , binary "ordNumber" "_less_eq" L.LTE
 
     , binary "eqNumber" "_eq_eq" L.EQ
+    , binary "eqNumber" "_div_eq" L.NEQ
+    , binary "eqString" "_eq_eq" L.EQ
+    , binary "eqString" "_div_eq" L.NEQ
+    , binary "eqBoolean" "_eq_eq" L.EQ
+    , binary "eqBoolean" "_div_eq" L.NEQ
 
-    , binary "boolLikeBoolean" "_less" L.LT
+    , binary "semigroupString" "_plus_plus" L.Concat
+
     , binary "boolLikeBoolean" "_amp_amp" L.And
+    , binary "boolLikeBoolean" "_bar_bar" L.Or
 
-    -- , unary "boolLikeBoolean" "__not" L.Neg
+    , unary "numNumber" "_minus" L.Neg
+    , unary "boolLikeBoolean" "__not" L.Not
     ]
   where
     binary :: String -> String -> L.Binop -> L.Exp -> L.Exp
@@ -94,5 +104,17 @@ inlineCommonOperators' = applyAll
         _ -> exp
 
     unary :: String -> String -> L.Unop -> L.Exp -> L.Exp
-    unary typecls method unop exp = undefined
+    unary typecls method unop exp =
+      case exp of
+        (L.PrefixExp (L.PEFunCall (L.NormalFunCall
+          (L.PEFunCall (L.NormalFunCall
+            (L.PEVar (L.Select (L.PEVar (L.VarName "Prelude")) (L.String method')))
+            (L.Args [L.PrefixExp (L.PEFunCall
+                       (L.NormalFunCall
+                         (L.PEVar (L.Select (L.PEVar (L.VarName "Prelude")) (L.String typecls')))
+                         (L.Args [L.TableConst []])))])))
+          (L.Args [arg]))))
+          | method' == method && typecls' == typecls -> L.Unop unop arg
+          | otherwise -> exp
+        _ -> exp
 
