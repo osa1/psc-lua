@@ -77,9 +77,9 @@ assignDeclToTable tbl (TypeRef _ (Just dctors)) =
   map (\n -> L.Assign [L.Select tbl (L.String $ runProperName n)]
                       [var $ runProperName n]) dctors
 assignDeclToTable tbl (ValueRef name) =
-  return $ L.Assign [L.Select tbl (L.String $ identToStr name)] [var $ identToStr name]
+  return $ L.Assign [L.Select tbl (L.String $ identToStr name)] [var $ identToEscapedStr name]
 assignDeclToTable tbl (TypeInstanceRef name) =
-  return $ L.Assign [L.Select tbl (L.String $ identToStr name)] [var $ identToStr name]
+  return $ L.Assign [L.Select tbl (L.String $ identToStr name)] [var $ identToEscapedStr name]
 assignDeclToTable tbl (PositionedDeclarationRef _ decl) = assignDeclToTable tbl decl
 assignDeclToTable _ _ = []
 
@@ -99,12 +99,12 @@ declToLua decl = do
 declToLua' :: Declaration -> CG ([String], [L.Stat])
 declToLua' (ValueDeclaration ident _ _ _ val) = do
     val' <- valueToLua val
-    let ident' = identToStr ident
+    let ident' = identToEscapedStr ident
     return ([ident'], [L.Assign [L.VarName ident'] [val']])
 declToLua' (BindingGroupDeclaration vals) =
     liftM ((concat *** concat) . unzip) $ forM vals $ \(ident, _, val) -> do
       val' <- valueToLua val
-      let ident' = identToStr ident
+      let ident' = identToEscapedStr ident
       return ([ident'], [L.Assign [L.VarName ident'] [val']])
 declToLua' (DataDeclaration _ _ ctors) =
     liftM ([],) $ forM ctors $ \(pn@(ProperName ctor), tys) ->
@@ -187,7 +187,7 @@ valueToLua (Let ds val) = L.PrefixExp . L.PEFunCall . flip L.NormalFunCall (L.Ar
       ds' <- liftM concat $ mapM declToLua ds
       val' <- valueToLua val
       return $ L.Paren $ L.EFunDef $ L.FunBody [] False $ L.Block ds' (Just [val'])
-valueToLua (Abs (Left arg) body) = L.EFunDef . L.FunBody [identToStr arg] False <$> ret
+valueToLua (Abs (Left arg) body) = L.EFunDef . L.FunBody [identToEscapedStr arg] False <$> ret
   where
     ret = do
       body' <- valueToLua body
@@ -196,7 +196,7 @@ valueToLua (TypedValue _ v@(Abs (Left arg) val) ty) = do
     opts <- gets cgOpts
     if optionsPerformRuntimeTypeChecks opts
       then do
-        let arg' = identToStr arg
+        let arg' = identToEscapedStr arg
             stats = runtimeTypeChecks arg' ty
         ret <- valueToLua val
         return $ L.EFunDef $ L.FunBody [arg'] False (L.Block stats $ Just [ret])
@@ -299,7 +299,7 @@ generateBinderStats bname (BooleanBinder True) rest =
 generateBinderStats bname (BooleanBinder False) rest =
     return [L.If [(L.Unop L.Not $ var bname, L.Block rest Nothing)] Nothing]
 generateBinderStats bname (VarBinder ident) rest = do
-    return (L.LocalAssign [identToStr ident] (Just [var bname]) : rest)
+    return (L.LocalAssign [identToEscapedStr ident] (Just [var bname]) : rest)
 generateBinderStats bname (ConstructorBinder ctor binders) rest = do
     stats <- bindVals binders 1 rest
     onlyctor <- isOnlyConstructor ctor
@@ -379,7 +379,7 @@ generateBinderStats bname (ArrayBinder binders) rest = do
             L.PrefixExp $ L.PEVar $ L.Select (L.PEVar $ L.VarName bname) (L.Number $ show idx)
       return (L.LocalAssign [elVar] (Just [indexer]) : stats)
 generateBinderStats bname (NamedBinder ident binder) rest = do
-    let ident' = identToStr ident
+    let ident' = identToEscapedStr ident
     binder' <- generateBinderStats bname binder rest
     return (L.LocalAssign [ident'] (Just [var bname]) : binder')
 generateBinderStats bname (PositionedBinder _ binder) rest =
@@ -430,16 +430,15 @@ constr (Qualified (Just ns) (ProperName c)) = do
                  L.PrefixExp $ L.PEVar $ L.Select (L.PEVar $ L.VarName $ mnameToStr ns) (L.String c)
 
 qIdentToLua :: Qualified Ident -> CG L.Exp
-qIdentToLua (Qualified Nothing ident) = return $ L.PrefixExp $ L.PEVar $ L.VarName $ identToStr ident
-qIdentToLua (Qualified (Just ns) ident@Ident{}) = do
+qIdentToLua (Qualified Nothing ident) = return $ L.PrefixExp $ L.PEVar $ L.VarName $ identToEscapedStr ident
+qIdentToLua (Qualified (Just ns) ident) = do
     curModule <- gets cgModName
     return $ if curModule == ns
                then
-                 L.PrefixExp $ L.PEVar $ L.VarName (identToStr ident)
+                 L.PrefixExp $ L.PEVar $ L.VarName (identToEscapedStr ident)
                else
                  L.PrefixExp $ L.PEVar $ L.Select (L.PEVar $ L.VarName $ mnameToStr ns)
                                                   (L.String $ identToStr ident)
-qIdentToLua (Qualified q (Op op)) = qIdentToLua (Qualified q (Ident $ concatMap identCharToString op))
 
 mnameToStr :: ModuleName -> String
 mnameToStr (ModuleName pns) = intercalate "_" (runProperName `map` pns)
@@ -453,9 +452,13 @@ nameIsLuaReserved s = s `S.member` reserved
       , "true", "until", "while" ]
 
 identToStr :: Ident -> String
-identToStr (Ident name) | nameIsLuaReserved name = "__" ++ name
-identToStr (Ident name) = concatMap identCharToString name
-identToStr (Op op) = concatMap identCharToString op
+identToStr (Ident name) = name
+identToStr (Op op) = op
+
+identToEscapedStr :: Ident -> String
+identToEscapedStr (Ident name) | nameIsLuaReserved name = "__" ++ name
+identToEscapedStr (Ident name) = concatMap identCharToString name
+identToEscapedStr (Op op) = concatMap identCharToString op
 
 bindNames :: ModuleName -> [Ident] -> Environment -> Environment
 bindNames m idents env =
