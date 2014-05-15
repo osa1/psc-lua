@@ -8,10 +8,11 @@ import Language.PureScript.CodeGen.Lua.Utils
 
 import Data.Generics
 import Data.List (foldl')
+import qualified Data.Set as S
 import Prelude hiding (exp)
 
 optimize :: L.Block -> L.Block
-optimize = inlineCommonOperators . removeIfTrues . removeDollars
+optimize = removeDupAsgns . inlineCommonOperators . removeIfTrues . removeDollars
 
 -- | Replace `Prelude.$` calls with direct function applications.
 -- This assumes using standard Prelude.
@@ -50,6 +51,22 @@ removeIfTrues = everywhere (mkT removeIfTrue)
     searchIfTrue (stat : stats) = do
       (prevs, ifBody, rest) <- searchIfTrue stats
       return (stat : prevs, ifBody, rest)
+
+-- | In the codegen we never mutate a variable, so remove any reassignments
+-- of varibles in blocks.
+-- (multiple assignments of variables are introduced in codegen for pattern matching)
+removeDupAsgns :: Data a => a -> a
+removeDupAsgns = everywhere (mkT rmDupAsgns)
+  where
+    rmDupAsgns :: L.Block -> L.Block
+    rmDupAsgns (L.Block stats ret) = L.Block (iterStats S.empty stats) ret
+
+    iterStats :: S.Set L.Name -> [L.Stat] -> [L.Stat]
+    iterStats names (stat@(L.LocalAssign [name] (Just [_])) : rest)
+      | name `S.member` names = iterStats names rest
+      | otherwise = stat : iterStats (S.insert name names) rest
+    iterStats names (stats : rest) = stats : iterStats names rest
+    iterStats _ [] = []
 
 applyAll :: Data a => [a -> a] -> a -> a
 applyAll = foldl' (.) id
