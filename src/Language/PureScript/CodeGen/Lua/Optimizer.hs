@@ -16,7 +16,8 @@ applyAll = foldl' (.) id
 
 optimize :: L.Block -> L.Block
 optimize = applyAll
-  [removeVarAsgns, removeDupAsgns, inlineCommonOperators, removeIfTrues, removeDollars]
+  [removeReturnApps, removeVarAsgns, removeDupAsgns,
+   inlineCommonOperators, removeIfTrues, removeDollars]
 
 -- | Replace `Prelude.$` calls with direct function applications.
 -- This assumes using standard Prelude.
@@ -72,14 +73,6 @@ removeDupAsgns = everywhere (mkT rmDupAsgns)
     iterStats names (stats : rest) = stats : iterStats names rest
     iterStats _ [] = []
 
-subst :: Data a => L.Name -> L.Exp -> a -> a
-subst var rhs = everywhere (mkT subst')
-  where
-    subst' pexp@(L.PEVar ((L.VarName var')))
-      | var == var' = expToPexp rhs
-      | otherwise   = pexp
-    subst' pexp = pexp
-
 -- | Replace variables assigned to another variables with their right-hand
 -- sides.
 removeVarAsgns :: Data a => a -> a
@@ -104,6 +97,22 @@ removeVarAsgns = everywhere (mkT rmVarAsgns)
     isVar (L.PrefixExp L.PEVar{}) = True
     isVar (L.PrefixExp (L.Paren p)) = isVar p
     isVar _ = False
+
+    subst :: Data a => L.Name -> L.Exp -> a -> a
+    subst var rhs = everywhere (mkT subst')
+      where
+        subst' pexp@(L.PEVar ((L.VarName var')))
+          | var == var' = expToPexp rhs
+          | otherwise   = pexp
+        subst' pexp = pexp
+
+removeReturnApps :: Data a => a -> a
+removeReturnApps = everywhere (mkT rmRet)
+  where
+    rmRet (L.Block stats (Just [L.PrefixExp
+     (L.PEFunCall (L.NormalFunCall (L.Paren (L.EFunDef (L.FunBody [] _ (L.Block stats' (Just rets)))))
+                                   (L.Args [])))])) = L.Block (stats ++ stats') (Just rets)
+    rmRet b = b
 
 inlineCommonOperators :: Data a => a -> a
 inlineCommonOperators = everywhere (mkT inlineCommonOperators')
