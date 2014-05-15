@@ -4,15 +4,19 @@ module Language.PureScript.CodeGen.Lua.Optimizer (optimize) where
 
 import qualified Language.Lua.Syntax as L
 
-import Language.PureScript.CodeGen.Lua.Utils
+import Language.PureScript.CodeGen.Lua.Utils hiding (var)
 
 import Data.Generics
 import Data.List (foldl')
 import qualified Data.Set as S
 import Prelude hiding (exp)
 
+applyAll :: [a -> a] -> a -> a
+applyAll = foldl' (.) id
+
 optimize :: L.Block -> L.Block
-optimize = removeDupAsgns . inlineCommonOperators . removeIfTrues . removeDollars
+optimize = applyAll
+  [removeVarAsgns, removeDupAsgns, inlineCommonOperators, removeIfTrues, removeDollars]
 
 -- | Replace `Prelude.$` calls with direct function applications.
 -- This assumes using standard Prelude.
@@ -68,8 +72,38 @@ removeDupAsgns = everywhere (mkT rmDupAsgns)
     iterStats names (stats : rest) = stats : iterStats names rest
     iterStats _ [] = []
 
-applyAll :: Data a => [a -> a] -> a -> a
-applyAll = foldl' (.) id
+subst :: Data a => L.Name -> L.Exp -> a -> a
+subst var rhs = everywhere (mkT subst')
+  where
+    subst' pexp@(L.PEVar ((L.VarName var')))
+      | var == var' = expToPexp rhs
+      | otherwise   = pexp
+    subst' pexp = pexp
+
+-- | Replace variables assigned to another variables with their right-hand
+-- sides.
+removeVarAsgns :: Data a => a -> a
+removeVarAsgns = everywhere (mkT rmVarAsgns)
+  where
+    rmVarAsgns :: L.Block -> L.Block
+    rmVarAsgns (L.Block stats ret) =
+      uncurry L.Block $ iterStats stats ((fmap . fmap $ removeVarAsgns) ret)
+
+    iterStats :: [L.Stat] -> Maybe [L.Exp] -> ([L.Stat], Maybe [L.Exp])
+    iterStats (stat@(L.LocalAssign [name] (Just [rhs])) : rest) rets
+      | isVar rhs = iterStats (map (subst name rhs) rest) ((fmap . fmap $ subst name rhs) rets)
+      | otherwise =
+          let (stats', rets') = iterStats rest rets
+          in (stat : stats', rets')
+    iterStats (stat : rest) rets =
+      let (stats', rets') = iterStats rest rets
+      in (stat : stats', rets')
+    iterStats [] rets = ([], rets)
+
+    isVar :: L.Exp -> Bool
+    isVar (L.PrefixExp L.PEVar{}) = True
+    isVar (L.PrefixExp (L.Paren p)) = isVar p
+    isVar _ = False
 
 inlineCommonOperators :: Data a => a -> a
 inlineCommonOperators = everywhere (mkT inlineCommonOperators')
