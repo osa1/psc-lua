@@ -15,6 +15,10 @@ funcall f args =
 funcallS :: String -> [L.Exp] -> L.Stat
 funcallS f args = L.FunCall $ L.NormalFunCall (L.PEVar $ L.VarName f) (L.Args args)
 
+funcallStat :: L.Exp -> [L.Exp] -> L.Stat
+funcallStat f args =
+    L.FunCall $ L.NormalFunCall (expToPexp f) (L.Args args)
+
 pprint :: L.LPretty l => [l] -> String
 pprint ls =
     foldl' (\str ss -> "\n" ++ ss str) "" $ map (L.displayS . L.renderPretty 0.8 100 . L.pprint) ls
