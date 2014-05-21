@@ -106,6 +106,7 @@ removeVarAsgns = everywhere (mkT rmVarAsgns)
           | otherwise   = pexp
         subst' pexp = pexp
 
+-- | Remove redundant function application in `return (function () .. stats .. end)()`.
 removeReturnApps :: Data a => a -> a
 removeReturnApps = everywhere (mkT rmRet)
   where
