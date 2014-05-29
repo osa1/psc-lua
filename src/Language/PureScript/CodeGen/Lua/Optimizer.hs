@@ -5,6 +5,7 @@ module Language.PureScript.CodeGen.Lua.Optimizer (optimize) where
 import qualified Language.Lua.Syntax as L
 
 import Language.PureScript.CodeGen.Lua.Utils hiding (var)
+import Language.PureScript.CodeGen.Lua.Subst
 
 import Data.Generics
 import Data.List (foldl')
@@ -16,8 +17,39 @@ applyAll = foldl' (.) id
 
 optimize :: L.Block -> L.Block
 optimize = applyAll
-  [inlineEffOps, removeReturnApps, removeVarAsgns, removeDupAsgns,
-   inlineCommonOperators, removeIfTrues, removeDollars]
+  [applyVars, inlineEffOps, removeReturnApps, removeVarAsgns,
+   removeDupAsgns, inlineCommonOperators, removeIfTrues, removeDollars]
+
+-- | Reduce statements like
+-- `return (function (var1, var2, ...) return function (...) ... end end)(var1', var2', ...)`
+-- to
+-- `return (function (...) ... end)`
+-- by reducing the outer function application. `var1', var2', ...` should be all vars
+applyVars :: Data a => a -> a
+applyVars = everywhere (mkT applyVar)
+  where
+    applyVar
+      b@(L.Block [] (Just
+          [ L.PrefixExp (L.PEFunCall
+              (L.NormalFunCall
+               (L.Paren (L.EFunDef (L.FunBody args _ block)))
+               (L.Args vars))) ]))
+      | all isVar vars && length args == length vars =
+          let vars' = map getVar vars
+          in substBlock' (zip args vars') block
+      | otherwise = b
+    applyVar b = b
+
+    substBlock' :: [(L.Name, L.Name)] -> L.Block -> L.Block
+    substBlock' [] b = b
+    substBlock' ((r, l) : ss) b = substBlock' ss (runSubst 0 (substBlock r l b))
+
+    isVar (L.PrefixExp L.PEVar{}) = True
+    isVar _ = False
+
+    getVar :: L.Exp -> L.Name
+    getVar (L.PrefixExp (L.PEVar (L.VarName var))) = var
+    getVar notAVar = error $ "getVar on a non-var: " ++ show notAVar
 
 -- | Replace `Prelude.$` calls with direct function applications.
 -- This assumes using standard Prelude.

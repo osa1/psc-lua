@@ -27,3 +27,8 @@ expToPexp :: L.Exp -> L.PrefixExp
 expToPexp (L.PrefixExp pexp) = pexp
 expToPexp e = L.Paren e
 
+replace :: Eq a => a -> a -> [a] -> [a]
+replace _ _ [] = []
+replace lhs rhs (x : xs) =
+    (if x == lhs then rhs else x) : replace lhs rhs xs
+
