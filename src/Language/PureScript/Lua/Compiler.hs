@@ -12,6 +12,7 @@ import Language.PureScript.Sugar as P
 import Language.PureScript.ModuleDependencies as P
 import Language.PureScript.Environment as P
 import Language.PureScript.Errors as P
+import Language.PureScript.Supply as P
 
 import qualified Language.PureScript.Constants as C
 
@@ -29,7 +30,7 @@ compileToLua = compileToLua' initEnvironment
 compileToLua' :: Environment -> Options -> [Module] -> Either String [(String, String)]
 compileToLua' env opts ms = do
     (sorted, _) <- sortModules $ map importPrelude ms
-    desugared <- stringifyErrorStack True $ desugar sorted
+    (desugared, nextVar) <- stringifyErrorStack True $ runSupplyT 0 $ desugar sorted
     (elaborated, env') <- runCheck' (toPscOpts opts) env $ forM desugared $ typeCheckModule mainModuleIdent
     regrouped <- stringifyErrorStack True $ createBindingGroupsModule . collapseBindingGroupsModule $ elaborated
     let
