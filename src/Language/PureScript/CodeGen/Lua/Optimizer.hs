@@ -160,14 +160,14 @@ inlineEffOps = everywhere (mkT iter)
              (L.Args [arg1])))
            (L.Args [arg2])))) =
       let body = L.While (funcall arg1 []) (L.Block [funcallStat arg2 []] Nothing)
-      in L.EFunDef $ L.FunBody [] False (L.Block [body] $ Just [L.TableConst []])
+      in L.EFunDef $ L.FunBody [] False (L.Block [body] $ Just [])
 
     -- inline untilE
     iter (L.PrefixExp (L.PEFunCall (L.NormalFunCall
            (L.PEVar (L.Select (L.PEVar (L.VarName "Control_Monad_Eff")) (L.String "untilE")))
            (L.Args [arg])))) =
       let body = L.While (L.Unop L.Not (funcall arg [])) (L.Block [] Nothing)
-      in L.EFunDef $ L.FunBody [] False (L.Block [body] $ Just [L.TableConst []])
+      in L.EFunDef $ L.FunBody [] False (L.Block [body] $ Just [])
 
     -- inline (>>=) and (>>)
     iter e@(L.PrefixExp (L.PEFunCall (L.NormalFunCall
@@ -181,10 +181,10 @@ inlineEffOps = everywhere (mkT iter)
              (L.Args [arg2])))) =
       case arg2 of
         L.EFunDef (L.FunBody ["_"] False (L.Block [] (Just [ret]))) ->
-          let body = [funcallStat arg1 [L.TableConst []]]
+          let body = [funcallStat arg1 []]
           in L.EFunDef $ L.FunBody [] False (L.Block body (Just [funcall ret []]))
         L.EFunDef (L.FunBody [argName] False (L.Block [] (Just [ret]))) ->
-          let body = [L.LocalAssign [argName] $ Just [funcall arg1 [L.TableConst []]]]
+          let body = [L.LocalAssign [argName] $ Just [funcall arg1 []]]
           in L.EFunDef $ L.FunBody [] False (L.Block body (Just [funcall ret []]))
         _ -> e
 
